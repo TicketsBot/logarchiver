@@ -86,7 +86,7 @@
               {{end}}
 
               {{range $attachment := $msg.Attachments }}
-                <a href="{{$attachment.ProxyUrl}}" target="_blank" title="{{$attachment.Filename}}" class="attachment"><i class="far fa-file-alt fa-2x"></i></a>
+                <a href="{{$attachment.Url}}" target="_blank" title="{{$attachment.Filename}}" class="attachment"><i class="far fa-file-alt fa-2x"></i></a>
               {{end}}
             </div>
           {{end}}
