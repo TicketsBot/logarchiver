@@ -1,15 +1,15 @@
-package routes
+package http
 
 import (
+	"github.com/TicketsBot/logarchiver/discord"
 	"github.com/gin-gonic/gin"
-	"github.com/rxdn/gdl/objects/channel/message"
 )
 
-func EncodeHandler(ctx *gin.Context) {
-	var messages []message.Message
+func encodeHandler(ctx *gin.Context) {
+	var messages []discord.Message
 
 	if err := ctx.BindJSON(&messages); err != nil {
-		ctx.String(500, err.Error())
+		ctx.String(400, err.Error())
 		return
 	}
 

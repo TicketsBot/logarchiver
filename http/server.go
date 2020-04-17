@@ -1,27 +1,32 @@
 package http
 
 import (
-	"github.com/TicketsBot/logarchiver/http/routes"
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v6"
 )
 
-type HttpServer struct {
+type Server struct {
 	router *gin.Engine
+	client *minio.Client
 }
 
-func NewHttpServer() *HttpServer {
-	return &HttpServer{
+func NewServer(client *minio.Client) *Server {
+	return &Server{
 		router: gin.Default(),
+		client: client,
 	}
 }
 
-func (s *HttpServer) RegisterRoutes() {
+
+func (s *Server) RegisterRoutes() {
 	s.router.LoadHTMLGlob("./public/templates/*")
 
-	s.router.POST("/encode", routes.EncodeHandler)
+	s.router.POST("/encode", encodeHandler)
+	s.router.POST("/", s.postHandler)
+	s.router.GET("/", s.getHandler)
 }
 
-func (s *HttpServer) Start() {
+func (s *Server) Start() {
 	if err := s.router.Run(":3000"); err != nil {
 		panic(err)
 	}
