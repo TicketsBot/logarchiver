@@ -1,0 +1,18 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.14
+    working_directory: /go/src/github.com/TicketsBot/logarchiver
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          keys:
+            - v1-pkg-cache
+
+      - run: go build cmd/logarchiver/main.go
+
+      - store_artifacts:
+          path: /go/src/github.com/TicketsBot/logarchiver/main
