@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/TicketsBot/logarchiver/config"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v6"
 )
@@ -27,7 +28,7 @@ func (s *Server) RegisterRoutes() {
 }
 
 func (s *Server) Start() {
-	if err := s.router.Run(":3000"); err != nil {
+	if err := s.router.Run(config.Conf.Address); err != nil {
 		panic(err)
 	}
 }

@@ -74,20 +74,21 @@
       </div>
       <div class="row">
         <div id="message-container">
-            {{range $msg := .messages}}
-              <div class="message">
-                <img src="{{$msg.Author.AvatarUrl 256}}" class="avatar">
-                <b>{{$msg.Author.Username}}</b> {{$msg.Content}}
+          {{range $msg := .messages}}
+            <div class="message">
+              <img src="{{$msg.Author.AvatarUrl 256}}" class="avatar">
+              <b>{{$msg.Author.Username}}</b> {{$msg.Content}}
 
-                {{if gt (len $msg.Attachments) 0}}
-                  <br />
-                {{end}}
 
-                {{range $attachment := $msg.Attachments }}
-                  <a href="{{$attachment.ProxyUrl}}" target="_blank" title="{{$attachment.Filename}}" class="attachment"><i class="far fa-file-alt fa-2x"></i></a>
-                {{end}}
-              </div>
-            {{end}}
+              {{if gt (len $msg.Attachments) 0}}
+                <br />
+              {{end}}
+
+              {{range $attachment := $msg.Attachments }}
+                <a href="{{$attachment.ProxyUrl}}" target="_blank" title="{{$attachment.Filename}}" class="attachment"><i class="far fa-file-alt fa-2x"></i></a>
+              {{end}}
+            </div>
+          {{end}}
         </div>
       </div>
     </div>

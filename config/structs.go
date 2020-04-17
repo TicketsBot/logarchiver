@@ -2,7 +2,8 @@ package config
 
 type (
 	Config struct {
-		S3 S3
+		Address string
+		S3      S3
 	}
 
 	S3 struct {
