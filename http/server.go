@@ -23,8 +23,12 @@ func (s *Server) RegisterRoutes() {
 	s.router.LoadHTMLGlob("./public/templates/*")
 
 	s.router.POST("/encode", encodeHandler)
-	s.router.POST("/", s.postHandler)
-	s.router.GET("/", s.getHandler)
+
+	s.router.GET("/", s.ticketGetHandler)
+	s.router.POST("/", s.ticketUploadHandler)
+
+	s.router.GET("/modmail", s.modmailGetHandler)
+	s.router.POST("/modmail", s.modmailUploadHandler)
 }
 
 func (s *Server) Start() {

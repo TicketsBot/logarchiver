@@ -10,7 +10,7 @@ import (
 	"github.com/minio/minio-go/v6"
 )
 
-func (s *Server) postHandler(ctx *gin.Context) {
+func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 	var messages []discord.Message
 
 	if err := ctx.BindJSON(&messages); err != nil {

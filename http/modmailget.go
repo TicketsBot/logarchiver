@@ -8,7 +8,7 @@ import (
 	"github.com/minio/minio-go/v6"
 )
 
-func (s *Server) getHandler(ctx *gin.Context) {
+func (s *Server) modmailGetHandler(ctx *gin.Context) {
 	guild, ok := ctx.GetQuery("guild")
 	if !ok {
 		ctx.JSON(400, gin.H{
@@ -17,17 +17,17 @@ func (s *Server) getHandler(ctx *gin.Context) {
 		return
 	}
 
-	var id string
-	id, ok = ctx.GetQuery("id")
+	var uuid string
+	uuid, ok = ctx.GetQuery("uuid")
 	if !ok {
 		ctx.JSON(400, gin.H{
-			"message": "missing ticket ID",
+			"message": "missing ticket UUID",
 		})
 		return
 	}
 
 	// try reading with free name
-	reader, err := s.client.GetObject(config.Conf.S3.Bucket, fmt.Sprintf("%s/free-%s", guild, id), minio.GetObjectOptions{})
+	reader, err := s.client.GetObject(config.Conf.S3.Bucket, fmt.Sprintf("%s/modmail/free-%s", guild, uuid), minio.GetObjectOptions{})
 	if err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
@@ -54,7 +54,7 @@ func (s *Server) getHandler(ctx *gin.Context) {
 	}
 
 	// else, we should check the premium object
-	reader, err = s.client.GetObject(config.Conf.S3.Bucket, fmt.Sprintf("%s/%s", guild, id), minio.GetObjectOptions{})
+	reader, err = s.client.GetObject(config.Conf.S3.Bucket, fmt.Sprintf("%s/modmail/%s", guild, uuid), minio.GetObjectOptions{})
 	if err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
