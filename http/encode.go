@@ -14,7 +14,7 @@ func encodeHandler(ctx *gin.Context) {
 	}
 
 	ctx.HTML(200, "log.tmpl", gin.H{
-		"ticketId": ctx.Query("id"),
+		"title": ctx.Query("title"),
 		"messages": messages,
 	})
 }
