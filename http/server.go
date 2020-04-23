@@ -29,6 +29,8 @@ func (s *Server) RegisterRoutes() {
 
 	s.router.GET("/modmail", s.modmailGetHandler)
 	s.router.POST("/modmail", s.modmailUploadHandler)
+
+	s.router.GET("/modmail/all", s.modmailListHandler)
 }
 
 func (s *Server) Start() {
