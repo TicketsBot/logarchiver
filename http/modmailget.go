@@ -50,6 +50,7 @@ func (s *Server) modmailGetHandler(ctx *gin.Context) {
 			}
 		} else {
 			ctx.Data(200, "application/octet-stream", buff.Bytes())
+			return
 		}
 	}
 
