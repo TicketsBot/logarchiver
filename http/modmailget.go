@@ -49,7 +49,7 @@ func (s *Server) modmailGetHandler(ctx *gin.Context) {
 				return
 			}
 		} else {
-			ctx.Data(200, "application/json", buff.Bytes())
+			ctx.Data(200, "application/octet-stream", buff.Bytes())
 		}
 	}
 
@@ -75,7 +75,7 @@ func (s *Server) modmailGetHandler(ctx *gin.Context) {
 				return
 			}
 		} else {
-			ctx.Data(200, "application/json", buff.Bytes())
+			ctx.Data(200, "application/octet-stream", buff.Bytes())
 			return
 		}
 	}

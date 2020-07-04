@@ -43,7 +43,8 @@ func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 
 	// DigitalOcean does not support RetailUntilDate
 	if _, err := s.client.PutObject(config.Conf.S3.Bucket, name, bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{
-		ContentType:     "application/json",
+		ContentType:     "application/octet-stream",
+		ContentEncoding: "zstd",
 	}); err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
