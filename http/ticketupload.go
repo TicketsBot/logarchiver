@@ -6,6 +6,7 @@ import (
 	"github.com/TicketsBot/logarchiver/config"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v6"
+	"os"
 )
 
 func (s *Server) ticketUploadHandler(ctx *gin.Context) {
