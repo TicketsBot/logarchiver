@@ -42,7 +42,7 @@ func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 	name := fmt.Sprintf("%s/%s%s", guild, freePrefix, id)
 
 	// DigitalOcean does not support RetailUntilDate
-	if _, err := s.client.PutObject(config.Conf.S3.Bucket, name, bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{
+	if _, err := s.client.PutObject(os.Getenv("S3_BUCKET"), name, bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{
 		ContentType:     "application/octet-stream",
 		ContentEncoding: "zstd",
 	}); err != nil {

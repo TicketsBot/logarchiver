@@ -3,9 +3,9 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"github.com/TicketsBot/logarchiver/config"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v6"
+	"os"
 )
 
 func (s *Server) ticketGetHandler(ctx *gin.Context) {
@@ -27,7 +27,7 @@ func (s *Server) ticketGetHandler(ctx *gin.Context) {
 	}
 
 	// try reading with free name
-	reader, err := s.client.GetObject(config.Conf.S3.Bucket, fmt.Sprintf("%s/free-%s", guild, id), minio.GetObjectOptions{})
+	reader, err := s.client.GetObject(os.Getenv("S3_BUCKET"), fmt.Sprintf("%s/free-%s", guild, id), minio.GetObjectOptions{})
 	if err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
@@ -55,7 +55,7 @@ func (s *Server) ticketGetHandler(ctx *gin.Context) {
 	}
 
 	// else, we should check the premium object
-	reader, err = s.client.GetObject(config.Conf.S3.Bucket, fmt.Sprintf("%s/%s", guild, id), minio.GetObjectOptions{})
+	reader, err = s.client.GetObject(os.Getenv("S3_BUCKET"), fmt.Sprintf("%s/%s", guild, id), minio.GetObjectOptions{})
 	if err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),

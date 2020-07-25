@@ -1,16 +1,14 @@
 package main
 
 import (
-	"github.com/TicketsBot/logarchiver/config"
 	"github.com/TicketsBot/logarchiver/http"
 	"github.com/minio/minio-go/v6"
+	"os"
 )
 
 func main() {
-	config.LoadConfig()
-
 	// create minio client
-	client, err := minio.New(config.Conf.S3.Endpoint, config.Conf.S3.AccessKey, config.Conf.S3.SecretKey, false)
+	client, err := minio.New(os.Getenv("S3_ENDPOINT"), os.Getenv("S3_ACCESS"), os.Getenv("S3_SECRET"), false)
 	if err != nil {
 		panic(err)
 	}

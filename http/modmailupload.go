@@ -3,9 +3,9 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"github.com/TicketsBot/logarchiver/config"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v6"
+	"os"
 )
 
 func (s *Server) modmailUploadHandler(ctx *gin.Context) {
@@ -42,7 +42,7 @@ func (s *Server) modmailUploadHandler(ctx *gin.Context) {
 	name := fmt.Sprintf("%s/modmail/%s%s", guild, freePrefix, uuid)
 
 	// DigitalOcean does not support RetailUntilDate
-	if _, err := s.client.PutObject(config.Conf.S3.Bucket, name, bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{
+	if _, err := s.client.PutObject(os.Getenv("S3_BUCKET"), name, bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{
 		ContentType:     "application/octet-stream",
 		ContentEncoding: "zstd",
 	}); err != nil {

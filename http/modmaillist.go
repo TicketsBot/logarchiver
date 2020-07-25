@@ -3,8 +3,8 @@ package http
 import (
 	"fmt"
 	"github.com/TicketsBot/logarchiver"
-	"github.com/TicketsBot/logarchiver/config"
 	"github.com/gin-gonic/gin"
+	"os"
 	"sort"
 	"strconv"
 )
@@ -25,7 +25,7 @@ func (s *Server) modmailListHandler(ctx *gin.Context) {
 	prefix := fmt.Sprintf("%d/modmail/", guildId)
 
 	objects := make([]logarchiver.StoredObject, 0)
-	for object := range s.client.ListObjectsV2WithMetadata(config.Conf.S3.Bucket, prefix, true, done) {
+	for object := range s.client.ListObjectsV2WithMetadata(os.Getenv("S3_BUCKET"), prefix, true, done) {
 		if object.Err != nil {
 			ctx.AbortWithStatusJSON(500, gin.H{
 				"success": false,

@@ -1,9 +1,0 @@
-{
-  "address": ":3000",
-  "s3": {
-    "endpoint": "",
-    "accesskey": "",
-    "secretkey": "",
-    "bucket": ""
-  }
-}
