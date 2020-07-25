@@ -12,6 +12,10 @@ jobs:
           keys:
             - v1-pkg-cache
 
+      - run:
+          name: Install GCC & musl-dev
+          command: apk add gcc musl-dev
+
       - run: go build cmd/logarchiver/main.go
 
       - store_artifacts:
