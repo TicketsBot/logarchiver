@@ -1,88 +1,42 @@
 package http
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v6"
 	"os"
+	"strconv"
 )
 
 func (s *Server) ticketGetHandler(ctx *gin.Context) {
-	guild, ok := ctx.GetQuery("guild")
-	if !ok {
+	guild, err := strconv.ParseUint(ctx.Query("guild"), 10, 64)
+	if err != nil {
 		ctx.JSON(400, gin.H{
 			"message": "missing guild ID",
 		})
 		return
 	}
 
-	var id string
-	id, ok = ctx.GetQuery("id")
-	if !ok {
+	id, err := strconv.Atoi(ctx.Query("id"))
+	if err != nil {
 		ctx.JSON(400, gin.H{
 			"message": "missing ticket ID",
 		})
 		return
 	}
 
-	// try reading with free name
-	reader, err := s.client.GetObject(os.Getenv("S3_BUCKET"), fmt.Sprintf("%s/free-%s", guild, id), minio.GetObjectOptions{})
+	data, _, err := s.GetTicket(os.Getenv("S3_BUCKET"), guild, id)
 	if err != nil {
-		ctx.JSON(500, gin.H{
+		var statusCode int
+		if err == ErrTicketNotFound {
+			statusCode = 404
+		} else {
+			statusCode = 500
+		}
+
+		ctx.JSON(statusCode, gin.H{
 			"message": err.Error(),
 		})
 		return
 	}
 
-	// if we found the free object, we can return it
-	if reader != nil {
-		defer reader.Close()
-
-		var buff bytes.Buffer
-		_, err = buff.ReadFrom(reader)
-		if err != nil {
-			if err.Error() != "The specified key does not exist." {
-				ctx.JSON(500, gin.H{
-					"message": err.Error(),
-				})
-				return
-			}
-		} else {
-			ctx.Data(200, "application/octet-stream", buff.Bytes())
-			return
-		}
-	}
-
-	// else, we should check the premium object
-	reader, err = s.client.GetObject(os.Getenv("S3_BUCKET"), fmt.Sprintf("%s/%s", guild, id), minio.GetObjectOptions{})
-	if err != nil {
-		ctx.JSON(500, gin.H{
-			"message": err.Error(),
-		})
-		return
-	}
-
-	if reader != nil {
-		defer reader.Close()
-
-		var buff bytes.Buffer
-		_, err = buff.ReadFrom(reader)
-		if err != nil {
-			if err.Error() != "The specified key does not exist." {
-				ctx.JSON(500, gin.H{
-					"message": err.Error(),
-				})
-				return
-			}
-		} else {
-			ctx.Data(200, "application/octet-stream", buff.Bytes())
-			return
-		}
-	}
-
-	// if we didn't find the object, then it doesn't exist in our store
-	ctx.JSON(404, gin.H{
-		"message": "object not found",
-	})
+	ctx.Data(200, "application/octet-stream", data)
 }

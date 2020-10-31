@@ -1,11 +1,9 @@
 package http
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v6"
 	"os"
+	"strconv"
 )
 
 func (s *Server) ticketUploadHandler(ctx *gin.Context) {
@@ -17,40 +15,29 @@ func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 		return
 	}
 
-	guild, ok := ctx.GetQuery("guild")
-	if !ok {
+	guild, err := strconv.ParseUint(ctx.Query("guild"), 10, 64)
+	if err != nil {
 		ctx.JSON(400, gin.H{
 			"message": "missing guild ID",
 		})
 		return
 	}
 
-	var id string
-	id, ok = ctx.GetQuery("id")
-	if !ok {
+	id, err := strconv.Atoi(ctx.Query("id"))
+	if err != nil {
 		ctx.JSON(400, gin.H{
 			"message": "missing ticket ID",
 		})
 		return
 	}
 
-	var freePrefix string
-	if _, premium := ctx.GetQuery("premium"); !premium {
-		freePrefix = "free-"
-	}
+	_, premium := ctx.GetQuery("premium")
 
-	name := fmt.Sprintf("%s/%s%s", guild, freePrefix, id)
-
-	// DigitalOcean does not support RetailUntilDate
-	if _, err := s.client.PutObject(os.Getenv("S3_BUCKET"), name, bytes.NewReader(body), int64(len(body)), minio.PutObjectOptions{
-		ContentType:     "application/octet-stream",
-		ContentEncoding: "zstd",
-	}); err != nil {
+	if err := s.UploadTicket(os.Getenv("S3_BUCKET"), premium, guild, id, body); err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
 		})
-		return
+	} else {
+		ctx.JSON(200, gin.H{})
 	}
-
-	ctx.JSON(200, gin.H{})
 }
