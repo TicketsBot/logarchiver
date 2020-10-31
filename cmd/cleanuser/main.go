@@ -52,12 +52,14 @@ func main() {
 	}
 
 	for i, message := range messages {
-		message.Author.Username = strconv.FormatUint(message.Author.Id, 10)
-		message.Author.Avatar = ""
-		message.Content = "Deleted upon request of user"
-		message.Attachments = nil
+		if message.Author.Id == *userId {
+			message.Author.Username = strconv.FormatUint(message.Author.Id, 10)
+			message.Author.Avatar = ""
+			message.Content = "Deleted upon request of user"
+			message.Attachments = nil
 
-		messages[i] = message
+			messages[i] = message
+		}
 	}
 
 	data, err = json.Marshal(messages)
