@@ -18,7 +18,6 @@ func NewServer(client *minio.Client) *Server {
 	}
 }
 
-
 func (s *Server) RegisterRoutes() {
 	s.router.LoadHTMLGlob("./public/templates/*")
 
@@ -26,11 +25,6 @@ func (s *Server) RegisterRoutes() {
 
 	s.router.GET("/", s.ticketGetHandler)
 	s.router.POST("/", s.ticketUploadHandler)
-
-	s.router.GET("/modmail", s.modmailGetHandler)
-	s.router.POST("/modmail", s.modmailUploadHandler)
-
-	s.router.GET("/modmail/all", s.modmailListHandler)
 }
 
 func (s *Server) Start() {

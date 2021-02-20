@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/logarchiver/discord"
 	"github.com/TicketsBot/logarchiver/http"
 	"github.com/minio/minio-go/v6"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -19,11 +21,16 @@ var (
 	userId = flag.Uint64("userid", 0, "user ID to purge")
 	guildId = flag.Uint64("guildid", 0, "guild ID the ticket is from")
 	ticketId = flag.Int("ticket", 0, "ticket ID to clean")
-	encryptionKey = flag.String("key", "", "encryption key")
+	all = flag.Bool("all", false, "apply to all tickets")
+	encryptionKey = flag.String("key", "eo#6dDqK6&!G1OA$EqBYKr4l2^PrT^Bp", "encryption key")
 )
 
 func main() {
 	flag.Parse()
+
+	if *ticketId == 0 && !*all || *ticketId > 1 && *all {
+		panic("ticket or all must be set and are mutually exclusive")
+	}
 
 	client, err := minio.New(*endpoint, *accessKey, *secretKey, false)
 	if err != nil {
@@ -31,7 +38,30 @@ func main() {
 	}
 
 	server := http.NewServer(client)
-	data, isPremium, err := server.GetTicket(*bucket, *guildId, *ticketId)
+	if !*all {
+		clean(server, *ticketId)
+	} else {
+		done := make(chan struct{})
+		defer close(done)
+
+		prefix := fmt.Sprintf("%d/", *guildId)
+		for obj := range client.ListObjectsV2WithMetadata(*bucket, prefix, true, done) {
+			suffix := strings.TrimPrefix(obj.Key, prefix)
+			suffix = strings.TrimPrefix(suffix, "free-")
+			ticketId, err := strconv.Atoi(suffix)
+			if err != nil {
+				fmt.Printf("error occurred while parsing id of %s: %v\n", obj.Key, err)
+				continue
+			}
+
+			clean(server, ticketId)
+			fmt.Printf("cleaned %d\n", ticketId)
+		}
+	}
+}
+
+func clean(server *http.Server, ticketId int) {
+	data, isPremium, err := server.GetTicket(*bucket, *guildId, ticketId)
 	if err != nil {
 		panic(err)
 	}
@@ -74,7 +104,7 @@ func main() {
 
 	data = encryption.Compress(data)
 
-	err = server.UploadTicket(*bucket, isPremium, *guildId, *ticketId, data)
+	err = server.UploadTicket(*bucket, isPremium, *guildId, ticketId, data)
 	if err != nil {
 		panic(err)
 	}
