@@ -78,8 +78,8 @@
         <div id="message-container">
           {{range $msg := .messages}}
             <div class="message">
-              {{if ne $msg.Timestamp 0}}
-                [$msg.Timestamp]
+              {{if not $msg.Timestamp.IsZero }}
+                [{{$msg.Timestamp.Format "03:04 02/01/2006"}}]
               {{end}}
 
               <img src="{{$msg.Author.AvatarUrl 256}}" class="avatar">
