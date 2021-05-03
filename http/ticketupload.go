@@ -2,7 +2,6 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"os"
 	"strconv"
 )
 
@@ -33,7 +32,7 @@ func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 
 	_, premium := ctx.GetQuery("premium")
 
-	if err := s.UploadTicket(os.Getenv("S3_BUCKET"), premium, guild, id, body); err != nil {
+	if err := s.UploadTicket(s.Config.Bucket, premium, guild, id, body); err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
 		})

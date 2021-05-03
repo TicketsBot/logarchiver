@@ -78,6 +78,10 @@
         <div id="message-container">
           {{range $msg := .messages}}
             <div class="message">
+              {{if ne $msg.Timestamp 0}}
+                [$msg.Timestamp]
+              {{end}}
+
               <img src="{{$msg.Author.AvatarUrl 256}}" class="avatar">
               <b>{{$msg.Author.Username}}</b> {{$msg.Content}}
 

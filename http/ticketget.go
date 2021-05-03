@@ -2,7 +2,6 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"os"
 	"strconv"
 )
 
@@ -23,7 +22,7 @@ func (s *Server) ticketGetHandler(ctx *gin.Context) {
 		return
 	}
 
-	data, _, err := s.GetTicket(os.Getenv("S3_BUCKET"), guild, id)
+	data, _, err := s.GetTicket(s.Config.Bucket, guild, id)
 	if err != nil {
 		var statusCode int
 		if err == ErrTicketNotFound {
