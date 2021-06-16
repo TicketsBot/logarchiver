@@ -9,12 +9,12 @@ import (
 
 var ErrTicketNotFound = errors.New("object not found")
 
-// data, is_premium, error
-func (s *Server) GetTicket(bucketName string, guildId uint64, ticketId int) ([]byte, bool, error) {
+// data, error
+func (s *Server) GetTicket(bucketName string, guildId uint64, ticketId int) ([]byte, error) {
 	// try reading with free name
 	reader, err := s.client.GetObject(bucketName, fmt.Sprintf("%d/free-%d", guildId, ticketId), minio.GetObjectOptions{})
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	// if we found the free object, we can return it
@@ -25,17 +25,17 @@ func (s *Server) GetTicket(bucketName string, guildId uint64, ticketId int) ([]b
 		_, err = buff.ReadFrom(reader)
 		if err != nil {
 			if err.Error() != "The specified key does not exist." {
-				return nil, false, err
+				return nil, err
 			}
 		} else {
-			return buff.Bytes(), false, nil
+			return buff.Bytes(), nil
 		}
 	}
 
 	// else, we should check the premium object
 	reader, err = s.client.GetObject(bucketName, fmt.Sprintf("%d/%d", guildId, ticketId), minio.GetObjectOptions{})
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	if reader != nil {
@@ -45,23 +45,18 @@ func (s *Server) GetTicket(bucketName string, guildId uint64, ticketId int) ([]b
 		_, err = buff.ReadFrom(reader)
 		if err != nil {
 			if err.Error() != "The specified key does not exist." {
-				return nil, false, err
+				return nil, err
 			}
 		} else {
-			return buff.Bytes(), true, nil
+			return buff.Bytes(), nil
 		}
 	}
 
-	return nil, false, ErrTicketNotFound
+	return nil, ErrTicketNotFound
 }
 
-func (s *Server) UploadTicket(bucket string, isPremium bool, guildId uint64, ticketId int, data []byte) error {
-	var freePrefix string
-	if !isPremium {
-		freePrefix = "free-"
-	}
-
-	name := fmt.Sprintf("%d/%s%d", guildId, freePrefix, ticketId)
+func (s *Server) UploadTicket(bucket string, guildId uint64, ticketId int, data []byte) error {
+	name := fmt.Sprintf("%d/%d", guildId, ticketId)
 
 	_, err := s.client.PutObject(bucket, name, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{
 		ContentType:     "application/octet-stream",

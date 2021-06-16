@@ -30,9 +30,7 @@ func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 		return
 	}
 
-	_, premium := ctx.GetQuery("premium")
-
-	if err := s.UploadTicket(s.Config.Bucket, premium, guild, id, body); err != nil {
+	if err := s.UploadTicket(s.Config.Bucket, guild, id, body); err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
 		})

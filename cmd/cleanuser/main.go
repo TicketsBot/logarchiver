@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
+	"github.com/TicketsBot/logarchiver/config"
 	"github.com/TicketsBot/logarchiver/discord"
 	"github.com/TicketsBot/logarchiver/http"
 	"github.com/minio/minio-go/v6"
@@ -22,7 +23,7 @@ var (
 	guildId = flag.Uint64("guildid", 0, "guild ID the ticket is from")
 	ticketId = flag.Int("ticket", 0, "ticket ID to clean")
 	all = flag.Bool("all", false, "apply to all tickets")
-	encryptionKey = flag.String("key", "eo#6dDqK6&!G1OA$EqBYKr4l2^PrT^Bp", "encryption key")
+	encryptionKey = flag.String("key", "", "encryption key") // to any keen eyes looking at commit history: the key has been ommitted and all transcripts have been re-encrypted
 )
 
 func main() {
@@ -32,12 +33,19 @@ func main() {
 		panic("ticket or all must be set and are mutually exclusive")
 	}
 
+	conf := config.Config{
+		Endpoint:  *endpoint,
+		Bucket:    *bucket,
+		AccessKey: *accessKey,
+		SecretKey: *secretKey,
+	}
+
 	client, err := minio.New(*endpoint, *accessKey, *secretKey, false)
 	if err != nil {
 		panic(err)
 	}
 
-	server := http.NewServer(client)
+	server := http.NewServer(conf, client)
 	if !*all {
 		clean(server, *ticketId)
 	} else {
@@ -61,7 +69,7 @@ func main() {
 }
 
 func clean(server *http.Server, ticketId int) {
-	data, isPremium, err := server.GetTicket(*bucket, *guildId, ticketId)
+	data, err := server.GetTicket(*bucket, *guildId, ticketId)
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +112,7 @@ func clean(server *http.Server, ticketId int) {
 
 	data = encryption.Compress(data)
 
-	err = server.UploadTicket(*bucket, isPremium, *guildId, ticketId, data)
+	err = server.UploadTicket(*bucket, *guildId, ticketId, data)
 	if err != nil {
 		panic(err)
 	}

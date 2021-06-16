@@ -22,7 +22,7 @@ func (s *Server) ticketGetHandler(ctx *gin.Context) {
 		return
 	}
 
-	data, _, err := s.GetTicket(s.Config.Bucket, guild, id)
+	data, err := s.GetTicket(s.Config.Bucket, guild, id)
 	if err != nil {
 		var statusCode int
 		if err == ErrTicketNotFound {
