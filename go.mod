@@ -8,4 +8,5 @@ require (
 	github.com/caarlos0/env/v6 v6.5.0 // indirect
 	github.com/gin-gonic/gin v1.6.2
 	github.com/minio/minio-go/v6 v6.0.53
+	github.com/rxdn/gdl v0.0.0-20211030160619-a8772c268ca4 // indirect
 )
