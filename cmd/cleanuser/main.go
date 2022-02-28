@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/logarchiver/config"
-	"github.com/TicketsBot/logarchiver/discord"
 	"github.com/TicketsBot/logarchiver/http"
+	"github.com/TicketsBot/logarchiver/model/v1"
 	"github.com/minio/minio-go/v6"
 	"strconv"
 	"strings"
@@ -84,7 +84,7 @@ func clean(server *http.Server, ticketId int) {
 		panic(err)
 	}
 
-	var messages []discord.Message
+	var messages []v1.Message
 	if err := json.Unmarshal(data, &messages); err != nil {
 		panic(err)
 	}
@@ -94,6 +94,7 @@ func clean(server *http.Server, ticketId int) {
 			message.Author.Username = strconv.FormatUint(message.Author.Id, 10)
 			message.Author.Avatar = ""
 			message.Content = "Deleted upon request of user"
+			message.Embeds = nil
 			message.Attachments = nil
 
 			messages[i] = message

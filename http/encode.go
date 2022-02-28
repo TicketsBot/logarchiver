@@ -1,12 +1,12 @@
 package http
 
 import (
-	"github.com/TicketsBot/logarchiver/discord"
+	"github.com/TicketsBot/logarchiver/model/v1"
 	"github.com/gin-gonic/gin"
 )
 
 func encodeHandler(ctx *gin.Context) {
-	var messages []discord.Message
+	var messages []v1.Message
 
 	if err := ctx.BindJSON(&messages); err != nil {
 		ctx.String(400, err.Error())
