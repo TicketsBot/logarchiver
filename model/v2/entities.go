@@ -8,9 +8,9 @@ import (
 )
 
 type Entities struct {
-	Users    []User    `json:"users"`
-	Channels []Channel `json:"channels"`
-	Roles    []Role    `json:"roles"`
+	Users    map[uint64]User    `json:"users"`
+	Channels map[uint64]Channel `json:"channels"`
+	Roles    map[uint64]Role    `json:"roles"`
 }
 
 type User struct {

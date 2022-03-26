@@ -1,6 +1,6 @@
 module github.com/TicketsBot/logarchiver
 
-go 1.14
+go 1.18
 
 require (
 	github.com/TicketsBot/common v0.0.0-20201015164440-602656bff706 // indirect
