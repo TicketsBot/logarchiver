@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"github.com/TicketsBot/logarchiver/model"
 	"github.com/rxdn/gdl/objects/channel"
 	"github.com/rxdn/gdl/objects/channel/message"
 	"github.com/rxdn/gdl/objects/guild"
@@ -64,7 +65,7 @@ func NewTranscript(
 	}
 
 	return Transcript{
-		Version:  2,
+		Version:  model.V2,
 		Entities: entities,
 		Messages: reduced,
 	}
