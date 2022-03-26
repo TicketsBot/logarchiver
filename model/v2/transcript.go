@@ -1,15 +1,16 @@
 package v2
 
 import (
+	"github.com/TicketsBot/logarchiver/model"
 	"github.com/rxdn/gdl/objects/channel"
 	"github.com/rxdn/gdl/objects/channel/embed"
 	"time"
 )
 
 type Transcript struct {
-	Version  int       `json:"version"`
-	Entities Entities  `json:"entities"`
-	Messages []Message `json:"messages"`
+	Version  model.Version `json:"version"`
+	Entities Entities      `json:"entities"`
+	Messages []Message     `json:"messages"`
 }
 
 type Message struct {
