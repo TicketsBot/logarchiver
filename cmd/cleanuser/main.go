@@ -7,8 +7,11 @@ import (
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/logarchiver/config"
 	"github.com/TicketsBot/logarchiver/http"
+	"github.com/TicketsBot/logarchiver/model"
 	"github.com/TicketsBot/logarchiver/model/v1"
+	v2 "github.com/TicketsBot/logarchiver/model/v2"
 	"github.com/minio/minio-go/v6"
+	"github.com/rxdn/gdl/objects/channel/message"
 	"strconv"
 	"strings"
 )
@@ -19,10 +22,10 @@ var (
 	secretKey = flag.String("secretkey", "", "secret key")
 	bucket    = flag.String("bucket", "", "the name of the bucket to manage")
 
-	userId = flag.Uint64("userid", 0, "user ID to purge")
-	guildId = flag.Uint64("guildid", 0, "guild ID the ticket is from")
-	ticketId = flag.Int("ticket", 0, "ticket ID to clean")
-	all = flag.Bool("all", false, "apply to all tickets")
+	userId        = flag.Uint64("userid", 0, "user ID to purge")
+	guildId       = flag.Uint64("guildid", 0, "guild ID the ticket is from")
+	ticketId      = flag.Int("ticket", 0, "ticket ID to clean")
+	all           = flag.Bool("all", false, "apply to all tickets")
 	encryptionKey = flag.String("key", "", "encryption key") // to any keen eyes looking at commit history: the key has been ommitted and all transcripts have been re-encrypted
 )
 
@@ -84,24 +87,44 @@ func clean(server *http.Server, ticketId int) {
 		panic(err)
 	}
 
-	var messages []v1.Message
-	if err := json.Unmarshal(data, &messages); err != nil {
-		panic(err)
+	var transcript v2.Transcript
+
+	version := model.GetVersion(data)
+	switch version {
+	case model.V1:
+		var messages []message.Message
+		if err := json.Unmarshal(data, &messages); err != nil {
+			panic(err)
+		}
+
+		transcript = v1.ConvertToV2(messages)
+	case model.V2:
+		if err := json.Unmarshal(data, &transcript); err != nil {
+			panic(err)
+		}
+	default:
+		panic(fmt.Sprintf("Unknown version %d", version))
 	}
 
-	for i, message := range messages {
-		if message.Author.Id == *userId {
-			message.Author.Username = strconv.FormatUint(message.Author.Id, 10)
-			message.Author.Avatar = ""
+	transcript.Entities.Users[*userId] = v2.User{
+		Id:            *userId,
+		Username:      strconv.FormatUint(*userId, 10),
+		Discriminator: 0,
+		Avatar:        "",
+		Bot:           false,
+	}
+
+	for i, message := range transcript.Messages {
+		if message.AuthorId == *userId {
 			message.Content = "Deleted upon request of user"
 			message.Embeds = nil
 			message.Attachments = nil
 
-			messages[i] = message
+			transcript.Messages[i] = message
 		}
 	}
 
-	data, err = json.Marshal(messages)
+	data, err = json.Marshal(transcript)
 	if err != nil {
 		panic(err)
 	}

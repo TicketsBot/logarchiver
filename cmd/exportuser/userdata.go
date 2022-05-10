@@ -1,0 +1,254 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"github.com/TicketsBot/database"
+	"time"
+)
+
+// The worst code you have ever seen
+func getUserData(db *database.Database, userId uint64) map[string]interface{} {
+	data := make(map[string]interface{})
+
+	data["blacklisted_guilds"] = getBlacklistedGuilds(db, userId)
+	data["close_requests"] = getCloseRequests(db, userId)
+	data["response_times"] = getResponseTimes(db, userId)
+	data["participated_tickets"] = getParticipatedTickets(db, userId)
+	data["permissions"] = getPermissions(db, userId)
+	data["team_permissions"] = getTeamPermissions(db, userId)
+	data["claimed_tickets"] = getClaimedTickets(db, userId)
+	data["member_of_tickets"] = getTicketsMember(db, userId)
+	data["tickets"] = getTickets(db, userId)
+	data["premium_activated_for"] = getPremiumActivatedFor(db, userId)
+
+	guilds, err := db.UserGuilds.Get(userId)
+	must(err)
+	data["guilds"] = guilds
+
+	voteTime, err := db.Votes.Get(userId)
+	must(err)
+	if voteTime.IsZero() {
+		data["last_vote_time"] = nil
+	} else {
+		data["last_vote_time"] = voteTime
+	}
+
+	whitelabel, err := db.Whitelabel.GetByUserId(userId)
+	must(err)
+	if whitelabel.UserId == 0 {
+		data["whitelabel"] = nil
+	} else {
+		data["whitelabel"] = whitelabel
+	}
+
+	whitelabelExpiry, err := db.WhitelabelUsers.GetExpiry(userId)
+	must(err)
+	if whitelabelExpiry.IsZero() {
+		data["whitelabel_expiry"] = nil
+	} else {
+		data["whitelabel_expiry"] = whitelabelExpiry
+	}
+
+	return data
+}
+
+func getBlacklistedGuilds(db *database.Database, userId uint64) (guilds []uint64) {
+	rows, err := db.Blacklist.Query(context.Background(), "SELECT guild_id FROM blacklist WHERE user_id = $1;", userId)
+	must(err)
+
+	for rows.Next() {
+		var guildId uint64
+		must(rows.Scan(&guildId))
+
+		guilds = append(guilds, guildId)
+	}
+
+	return
+}
+
+func getCloseRequests(db *database.Database, userId uint64) (requests []database.CloseRequest) {
+	query := `
+SELECT "guild_id", "ticket_id", "user_id", "close_at", "close_reason"
+FROM close_request
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var request database.CloseRequest
+		must(rows.Scan(&request.GuildId, &request.TicketId, &request.UserId, &request.CloseAt, &request.Reason))
+		requests = append(requests, request)
+	}
+
+	return
+}
+
+func getResponseTimes(db *database.Database, userId uint64) (times []interface{}) {
+	query := `
+SELECT "guild_id", "ticket_id", "user_id", "response_time"
+FROM first_response_time
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var guildId, userId uint64
+		var ticketId int
+		var responseTime time.Duration
+
+		must(rows.Scan(&guildId, &ticketId, &userId, &responseTime))
+		times = append(times, map[string]interface{}{
+			"guild_id":      guildId,
+			"ticket_id":     ticketId,
+			"user_id":       userId,
+			"response_time": responseTime,
+		})
+	}
+
+	return
+}
+
+func getParticipatedTickets(db *database.Database, userId uint64) (tickets []string) {
+	query := `
+SELECT "guild_id", "ticket_id"
+FROM participant
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var guildId uint64
+		var ticketId int
+
+		must(rows.Scan(&guildId, &ticketId))
+		tickets = append(tickets, fmt.Sprintf("%d/%d", guildId, ticketId))
+	}
+
+	return
+}
+
+func getPermissions(db *database.Database, userId uint64) map[uint64]string {
+	query := `
+SELECT "guild_id", "support", "admin"
+FROM permissions
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	data := make(map[uint64]string)
+	for rows.Next() {
+		var guildId uint64
+		var isSupport, isAdmin bool
+
+		must(rows.Scan(&guildId, &isSupport, &isAdmin))
+
+		if isAdmin {
+			data[guildId] = "admin"
+		} else if isSupport {
+			data[guildId] = "support"
+		} else {
+			data[guildId] = "none"
+		}
+	}
+
+	return data
+}
+
+func getTeamPermissions(db *database.Database, userId uint64) (teams []int) {
+	query := `
+SELECT "team_id"
+FROM support_team_members
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var teamId int
+		must(rows.Scan(&teamId))
+		teams = append(teams, teamId)
+	}
+
+	return
+}
+
+func getClaimedTickets(db *database.Database, userId uint64) (tickets []string) {
+	query := `
+SELECT "guild_id", "ticket_id"
+FROM ticket_claims
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var guildId uint64
+		var ticketId int
+
+		must(rows.Scan(&guildId, &ticketId))
+		tickets = append(tickets, fmt.Sprintf("%d/%d", guildId, ticketId))
+	}
+
+	return
+}
+
+func getTicketsMember(db *database.Database, userId uint64) (tickets []string) {
+	query := `
+SELECT "guild_id", "ticket_id"
+FROM ticket_members
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var guildId uint64
+		var ticketId int
+
+		must(rows.Scan(&guildId, &ticketId))
+		tickets = append(tickets, fmt.Sprintf("%d/%d", guildId, ticketId))
+	}
+
+	return
+}
+
+func getTickets(db *database.Database, userId uint64) (tickets []database.Ticket) {
+	query := `
+SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript
+FROM tickets
+WHERE "user_id" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var ticket database.Ticket
+		must(rows.Scan(&ticket.Id, &ticket.GuildId, &ticket.ChannelId, &ticket.UserId, &ticket.Open, &ticket.OpenTime, &ticket.WelcomeMessageId, &ticket.PanelId, &ticket.HasTranscript))
+		tickets = append(tickets, ticket)
+	}
+
+	return
+}
+
+func getPremiumActivatedFor(db *database.Database, userId uint64) (guilds []uint64) {
+	query := `
+SELECT guild_id
+FROM used_keys
+WHERE "activated_by" = $1;`
+
+	rows, err := db.Blacklist.Query(context.Background(), query, userId)
+	must(err)
+
+	for rows.Next() {
+		var guildId uint64
+		must(rows.Scan(&guildId))
+		guilds = append(guilds, guildId)
+	}
+
+	return
+}

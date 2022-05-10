@@ -2,5 +2,6 @@
 *.iml
 .env
 export/
+export_user/
 /new
 /done.json

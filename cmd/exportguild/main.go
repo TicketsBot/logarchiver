@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	guildId = flag.Uint64("guildid", 0, "guild id to export")
-	key = flag.String("key", "", "aes key")
+	guildId  = flag.Uint64("guildid", 0, "guild id to export")
+	key      = flag.String("key", "", "aes key")
+	ticketId = flag.Int("ticketid", 0, "set to export a single ticket")
 )
 
 func main() {
@@ -34,38 +35,46 @@ func main() {
 	// likely to be file exists
 	_ = os.Mkdir(fmt.Sprintf("export/%d", *guildId), 0)
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
+	if ticketId != nil && *ticketId > 0 {
+		export(*ticketId, s)
+	} else {
+		doneCh := make(chan struct{})
+		defer close(doneCh)
 
-	objCh := client.ListObjectsV2(conf.Bucket, fmt.Sprintf("%d/", *guildId), true, doneCh)
+		objCh := client.ListObjectsV2(conf.Bucket, fmt.Sprintf("%d/", *guildId), true, doneCh)
 
-	for obj := range objCh {
-		id := obj.Key
-		id = strings.Replace(id, fmt.Sprintf("%d/", *guildId), "", -1)
-		id = strings.Replace(id, "free-" , "", -1)
-		parsed, err := strconv.Atoi(id)
-		must(err)
+		for obj := range objCh {
+			id := obj.Key
+			id = strings.Replace(id, fmt.Sprintf("%d/", *guildId), "", -1)
+			id = strings.Replace(id, "free-", "", -1)
+			parsed, err := strconv.Atoi(id)
+			must(err)
 
-		data, err := s.GetTicket(conf.Bucket, *guildId, parsed)
-		must(err)
-
-		data, err = encryption.Decompress(data)
-		must(err)
-
-		data, err = encryption.Decrypt([]byte(*key), data)
-		must(err)
-
-		var encoded bytes.Buffer
-		must(json.Indent(&encoded, data, "", "  "))
-
-		f, err := os.Create(fmt.Sprintf("export/%d/%s.json", *guildId, id))
-		must(err)
-
-		_, err = encoded.WriteTo(f)
-		must(err)
-
-		fmt.Printf("exported %s\n", id)
+			export(parsed, s)
+		}
 	}
+}
+
+func export(id int, s *http.Server) {
+	data, err := s.GetTicket(s.Config.Bucket, *guildId, id)
+	must(err)
+
+	data, err = encryption.Decompress(data)
+	must(err)
+
+	data, err = encryption.Decrypt([]byte(*key), data)
+	must(err)
+
+	var encoded bytes.Buffer
+	must(json.Indent(&encoded, data, "", "  "))
+
+	f, err := os.Create(fmt.Sprintf("export/%d/%d.json", *guildId, id))
+	must(err)
+
+	_, err = encoded.WriteTo(f)
+	must(err)
+
+	fmt.Printf("exported %d\n", id)
 }
 
 func must(err error) {
