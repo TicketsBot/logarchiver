@@ -8,16 +8,22 @@ import (
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/logarchiver/config"
 	"github.com/TicketsBot/logarchiver/http"
+	"github.com/TicketsBot/logarchiver/model"
+	v1 "github.com/TicketsBot/logarchiver/model/v1"
+	v2 "github.com/TicketsBot/logarchiver/model/v2"
 	"github.com/minio/minio-go/v6"
+	"github.com/rxdn/gdl/objects/channel/message"
 	"os"
 	"strconv"
 	"strings"
 )
 
 var (
-	guildId  = flag.Uint64("guildid", 0, "guild id to export")
-	key      = flag.String("key", "", "aes key")
-	ticketId = flag.Int("ticketid", 0, "set to export a single ticket")
+	guildId       = flag.Uint64("guildid", 0, "guild id to export")
+	key           = flag.String("key", "", "aes key")
+	ticketId      = flag.Int("ticketid", 0, "set to export a single ticket")
+	convert       = flag.Bool("convert", false, "convert to v2 if necessary")
+	userWhitelist = flag.Uint64("userwhitelist", 0, "only export tickets from this user")
 )
 
 func main() {
@@ -64,6 +70,61 @@ func export(id int, s *http.Server) {
 
 	data, err = encryption.Decrypt([]byte(*key), data)
 	must(err)
+
+	if *convert || (userWhitelist != nil && *userWhitelist > 0) {
+		var transcript v2.Transcript
+
+		version := model.GetVersion(data)
+		switch version {
+		case model.V1:
+			var messages []message.Message
+			if err := json.Unmarshal(data, &messages); err != nil {
+				panic(err)
+			}
+
+			transcript = v1.ConvertToV2(messages)
+		case model.V2:
+			if err := json.Unmarshal(data, &transcript); err != nil {
+				panic(err)
+			}
+		default:
+			panic(fmt.Sprintf("Unknown version %d", version))
+		}
+
+		data, err = json.Marshal(transcript)
+		must(err)
+	}
+
+	if userWhitelist != nil && *userWhitelist > 0 {
+		var transcript v2.Transcript
+		if err := json.Unmarshal(data, &transcript); err != nil {
+			panic(err)
+		}
+
+		transcript.Entities.Channels = nil
+		transcript.Entities.Roles = nil
+
+		user, ok := transcript.Entities.Users[*userWhitelist]
+		if !ok {
+			transcript.Entities.Users = nil
+		} else {
+			transcript.Entities.Users = map[uint64]v2.User{
+				user.Id: user,
+			}
+		}
+
+		var messages []v2.Message
+		for _, message := range transcript.Messages {
+			if message.AuthorId == *userWhitelist {
+				messages = append(messages, message)
+			}
+		}
+
+		transcript.Messages = messages
+
+		data, err = json.Marshal(transcript)
+		must(err)
+	}
 
 	var encoded bytes.Buffer
 	must(json.Indent(&encoded, data, "", "  "))
