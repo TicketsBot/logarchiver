@@ -6,11 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
-	"github.com/TicketsBot/logarchiver/config"
-	"github.com/TicketsBot/logarchiver/http"
-	"github.com/TicketsBot/logarchiver/model"
-	v1 "github.com/TicketsBot/logarchiver/model/v1"
-	v2 "github.com/TicketsBot/logarchiver/model/v2"
+	"github.com/TicketsBot/logarchiver/pkg/config"
+	"github.com/TicketsBot/logarchiver/pkg/http"
+	"github.com/TicketsBot/logarchiver/pkg/model"
+	"github.com/TicketsBot/logarchiver/pkg/model/v1"
+	v22 "github.com/TicketsBot/logarchiver/pkg/model/v2"
 	"github.com/minio/minio-go/v6"
 	"github.com/rxdn/gdl/objects/channel/message"
 	"os"
@@ -72,7 +72,7 @@ func export(id int, s *http.Server) {
 	must(err)
 
 	if *convert || (userWhitelist != nil && *userWhitelist > 0) {
-		var transcript v2.Transcript
+		var transcript v22.Transcript
 
 		version := model.GetVersion(data)
 		switch version {
@@ -96,7 +96,7 @@ func export(id int, s *http.Server) {
 	}
 
 	if userWhitelist != nil && *userWhitelist > 0 {
-		var transcript v2.Transcript
+		var transcript v22.Transcript
 		if err := json.Unmarshal(data, &transcript); err != nil {
 			panic(err)
 		}
@@ -108,12 +108,12 @@ func export(id int, s *http.Server) {
 		if !ok {
 			transcript.Entities.Users = nil
 		} else {
-			transcript.Entities.Users = map[uint64]v2.User{
+			transcript.Entities.Users = map[uint64]v22.User{
 				user.Id: user,
 			}
 		}
 
-		var messages []v2.Message
+		var messages []v22.Message
 		for _, message := range transcript.Messages {
 			if message.AuthorId == *userWhitelist {
 				messages = append(messages, message)

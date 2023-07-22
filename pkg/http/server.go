@@ -1,7 +1,7 @@
 package http
 
 import (
-	"github.com/TicketsBot/logarchiver/config"
+	"github.com/TicketsBot/logarchiver/pkg/config"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v6"
 	"log"

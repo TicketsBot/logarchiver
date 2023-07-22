@@ -5,11 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
-	"github.com/TicketsBot/logarchiver/config"
-	"github.com/TicketsBot/logarchiver/http"
-	"github.com/TicketsBot/logarchiver/model"
-	"github.com/TicketsBot/logarchiver/model/v1"
-	v2 "github.com/TicketsBot/logarchiver/model/v2"
+	"github.com/TicketsBot/logarchiver/pkg/config"
+	"github.com/TicketsBot/logarchiver/pkg/http"
+	"github.com/TicketsBot/logarchiver/pkg/model"
+	"github.com/TicketsBot/logarchiver/pkg/model/v1"
+	v22 "github.com/TicketsBot/logarchiver/pkg/model/v2"
 	"github.com/minio/minio-go/v6"
 	"github.com/rxdn/gdl/objects/channel/message"
 	"os"
@@ -101,7 +101,7 @@ func clean(server *http.Server, ticketId int) (count int) {
 		panic(err)
 	}
 
-	var transcript v2.Transcript
+	var transcript v22.Transcript
 
 	version := model.GetVersion(data)
 	switch version {
@@ -120,7 +120,7 @@ func clean(server *http.Server, ticketId int) (count int) {
 		panic(fmt.Sprintf("Unknown version %d", version))
 	}
 
-	transcript.Entities.Users[*userId] = v2.User{
+	transcript.Entities.Users[*userId] = v22.User{
 		Id:            *userId,
 		Username:      strconv.FormatUint(*userId, 10),
 		Discriminator: 0,

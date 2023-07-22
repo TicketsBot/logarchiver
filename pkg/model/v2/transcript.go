@@ -1,7 +1,7 @@
 package v2
 
 import (
-	"github.com/TicketsBot/logarchiver/model"
+	"github.com/TicketsBot/logarchiver/pkg/model"
 	"github.com/rxdn/gdl/objects/channel"
 	"github.com/rxdn/gdl/objects/channel/embed"
 	"github.com/rxdn/gdl/objects/channel/message"

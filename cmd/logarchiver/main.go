@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/TicketsBot/logarchiver/config"
-	"github.com/TicketsBot/logarchiver/http"
+	"github.com/TicketsBot/logarchiver/pkg/config"
+	"github.com/TicketsBot/logarchiver/pkg/http"
 	"github.com/minio/minio-go/v6"
 )
 
