@@ -10,7 +10,8 @@ type Config struct {
 	AccessKey string `env:"S3_ACCESS"`
 	SecretKey string `env:"S3_SECRET"`
 
-	ProductionMode bool `env:"PRODUCTION_MODE"`
+	SentryDsn      string `env:"SENTRY_DSN"`
+	ProductionMode bool   `env:"PRODUCTION_MODE" envDefault:"false"`
 }
 
 func Parse() (conf Config) {

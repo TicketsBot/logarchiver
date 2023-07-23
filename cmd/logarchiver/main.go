@@ -1,15 +1,28 @@
 package main
 
 import (
+	"fmt"
 	"github.com/TicketsBot/common/observability"
 	"github.com/TicketsBot/logarchiver/pkg/config"
 	"github.com/TicketsBot/logarchiver/pkg/http"
+	"github.com/getsentry/sentry-go"
 	"github.com/minio/minio-go/v6"
 	"go.uber.org/zap"
 )
 
 func main() {
 	conf := config.Parse()
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:   conf.SentryDsn,
+		Debug: !conf.ProductionMode,
+	}); err != nil {
+		if conf.ProductionMode {
+			panic(err)
+		} else {
+			fmt.Printf("Failed to initialise sentry: %v\n", err)
+		}
+	}
 
 	var logger *zap.Logger
 	var err error
