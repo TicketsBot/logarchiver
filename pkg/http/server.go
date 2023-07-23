@@ -1,26 +1,28 @@
 package http
 
 import (
+	"github.com/TicketsBot/logarchiver/internal"
 	"github.com/TicketsBot/logarchiver/pkg/config"
 	"github.com/gin-gonic/gin"
 	"github.com/minio/minio-go/v6"
-	"log"
-	"os"
+	"go.uber.org/zap"
 )
 
 type Server struct {
-	Logger *log.Logger
-	Config config.Config
-	router *gin.Engine
-	client *minio.Client
+	Logger      *zap.Logger
+	Config      config.Config
+	RemoveQueue internal.RemoveQueue
+	router      *gin.Engine
+	client      *minio.Client
 }
 
-func NewServer(config config.Config, client *minio.Client) *Server {
+func NewServer(logger *zap.Logger, config config.Config, client *minio.Client) *Server {
 	return &Server{
-		Logger: log.New(os.Stdout, "[server] ", log.LstdFlags),
-		Config: config,
-		router: gin.Default(),
-		client: client,
+		Logger:      logger,
+		Config:      config,
+		RemoveQueue: internal.NewRemoveQueue(logger),
+		router:      gin.Default(),
+		client:      client,
 	}
 }
 
@@ -32,6 +34,7 @@ func (s *Server) RegisterRoutes() {
 	s.router.GET("/", s.ticketGetHandler)
 	s.router.POST("/", s.ticketUploadHandler)
 
+	s.router.GET("/guild/status/:id", s.purgeStatusHandler)
 	s.router.DELETE("/guild/:id", s.purgeGuildHandler)
 }
 

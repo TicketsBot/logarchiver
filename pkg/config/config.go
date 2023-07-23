@@ -9,6 +9,8 @@ type Config struct {
 	Bucket    string `env:"S3_BUCKET"`
 	AccessKey string `env:"S3_ACCESS"`
 	SecretKey string `env:"S3_SECRET"`
+
+	ProductionMode bool `env:"PRODUCTION_MODE"`
 }
 
 func Parse() (conf Config) {
