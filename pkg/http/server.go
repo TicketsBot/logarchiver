@@ -27,10 +27,6 @@ func NewServer(logger *zap.Logger, config config.Config, client *minio.Client) *
 }
 
 func (s *Server) RegisterRoutes() {
-	s.router.LoadHTMLGlob("./public/templates/*")
-
-	s.router.POST("/encode", encodeHandler)
-
 	s.router.GET("/", s.ticketGetHandler)
 	s.router.POST("/", s.ticketUploadHandler)
 

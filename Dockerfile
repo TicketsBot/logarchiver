@@ -26,8 +26,6 @@ RUN apk update && apk upgrade
 COPY --from=builder /go/src/github.com/TicketsBot/logarchiver/logarchiver /srv/logarchiver/logarchiver
 RUN chmod +x /srv/logarchiver/logarchiver
 
-COPY --from=0 /go/src/github.com/TicketsBot/logarchiver/public /srv/logarchiver/public
-
 RUN adduser container --disabled-password --no-create-home
 USER container
 WORKDIR /srv/logarchiver
