@@ -23,7 +23,7 @@ func NewServer(logger *zap.Logger, config config.Config, client *minio.Client) *
 		Logger:      logger,
 		Config:      config,
 		RemoveQueue: internal.NewRemoveQueue(logger),
-		router:      gin.Default(),
+		router:      gin.New(),
 		client:      client,
 	}
 }
