@@ -68,7 +68,7 @@ func (q *RemoveQueue) GetOperation(guildId uint64) (RemoveOperation, error) {
 	defer q.mu.RUnlock()
 
 	if operation, ok := q.queue[guildId]; ok {
-		return operation, nil
+		return operation.clone(), nil
 	} else {
 		return RemoveOperation{}, ErrOperationNotFound
 	}
@@ -149,5 +149,30 @@ func (q *RemoveQueue) StartReaper() {
 			}
 		}
 		q.mu.Unlock()
+	}
+}
+
+func (o RemoveOperation) clone() RemoveOperation {
+	removed := collections.NewSet[string]()
+	for _, el := range o.Removed.Collect() {
+		removed.Add(el)
+	}
+
+	failed := collections.NewSet[string]()
+	for _, el := range o.Failed.Collect() {
+		failed.Add(el)
+	}
+
+	errors := make(map[string]error)
+	for k, v := range o.Errors {
+		errors[k] = v
+	}
+
+	return RemoveOperation{
+		Status:      o.Status,
+		Removed:     removed,
+		Failed:      failed,
+		Errors:      errors,
+		LastUpdated: o.LastUpdated,
 	}
 }

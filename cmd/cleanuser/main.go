@@ -12,6 +12,7 @@ import (
 	v22 "github.com/TicketsBot/logarchiver/pkg/model/v2"
 	"github.com/minio/minio-go/v6"
 	"github.com/rxdn/gdl/objects/channel/message"
+	"go.uber.org/zap"
 	"os"
 	"strconv"
 	"strings"
@@ -58,7 +59,12 @@ func main() {
 		panic(err)
 	}
 
-	server := http.NewServer(conf, client)
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+
+	server := http.NewServer(logger, conf, client)
 
 	var count int
 	if !*all {
@@ -121,8 +127,8 @@ func clean(server *http.Server, ticketId int) (count int) {
 	}
 
 	transcript.Entities.Users[*userId] = v22.User{
-		Id:            *userId,
-		Username:      strconv.FormatUint(*userId, 10),
+		Id:            0,
+		Username:      "Removed for privacy",
 		Discriminator: 0,
 		Avatar:        "",
 		Bot:           false,

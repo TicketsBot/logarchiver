@@ -4,9 +4,6 @@ RUN go version
 
 RUN apk update && apk upgrade && apk add git zlib-dev gcc musl-dev
 
-RUN mkdir -p /tmp/compile
-WORKDIR /tmp/compile
-
 COPY . /go/src/github.com/TicketsBot/logarchiver
 WORKDIR  /go/src/github.com/TicketsBot/logarchiver
 
