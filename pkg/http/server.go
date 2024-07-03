@@ -37,6 +37,7 @@ func (s *Server) RegisterRoutes() {
 
 	s.router.GET("/", s.ticketGetHandler)
 	s.router.POST("/", s.ticketUploadHandler)
+	s.router.DELETE("/", s.ticketDeleteHandler)
 
 	s.router.GET("/guild/status/:id", s.purgeStatusHandler)
 	s.router.DELETE("/guild/:id", s.purgeGuildHandler)

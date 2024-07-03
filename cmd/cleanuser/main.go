@@ -39,7 +39,8 @@ func main() {
 	}
 
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+		Secure: true,
 	})
 
 	if err != nil {

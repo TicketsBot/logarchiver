@@ -20,7 +20,8 @@ func main() {
 
 	// create minio client
 	client, err := minio.New(conf.Endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
+		Creds:  credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
+		Secure: true,
 	})
 	if err != nil {
 		panic(err)
@@ -31,11 +32,8 @@ func main() {
 		panic(err)
 	}
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
-
 	ch := client.ListObjects(context.Background(), conf.Bucket, minio.ListObjectsOptions{
-		Prefix:    "",
+		Prefix:    "8",
 		Recursive: true,
 	})
 

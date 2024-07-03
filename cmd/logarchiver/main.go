@@ -45,7 +45,8 @@ func main() {
 
 	// create minio client
 	client, err := minio.New(conf.Endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
+		Creds:  credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
+		Secure: true,
 	})
 	if err != nil {
 		logger.Fatal("Failed to create minio client", zap.Error(err), zap.String("endpoint", conf.Endpoint))
