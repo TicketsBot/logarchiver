@@ -1,100 +1,121 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/logarchiver/pkg/config"
-	"github.com/TicketsBot/logarchiver/pkg/http"
 	"github.com/TicketsBot/logarchiver/pkg/model"
 	"github.com/TicketsBot/logarchiver/pkg/model/v1"
-	v22 "github.com/TicketsBot/logarchiver/pkg/model/v2"
-	"github.com/minio/minio-go/v6"
+	"github.com/TicketsBot/logarchiver/pkg/model/v2"
+	"github.com/TicketsBot/logarchiver/pkg/s3client"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/rxdn/gdl/objects/channel/message"
-	"go.uber.org/zap"
 	"os"
 	"strconv"
 	"strings"
 )
 
 var (
-	endpoint, accessKey, secretKey, bucket string
-
 	userId        = flag.Uint64("userid", 0, "user ID to purge")
 	guildId       = flag.Uint64("guildid", 0, "guild ID the ticket is from")
-	ticketId      = flag.Int("ticket", 0, "ticket ID to clean")
+	ticketIds     = flag.String("ticket", "", "ticket ID(s) to clean")
 	all           = flag.Bool("all", false, "apply to all tickets")
-	encryptionKey = flag.String("key", "", "encryption key") // to any keen eyes looking at commit history: the key has been ommitted and all transcripts have been re-encrypted
+	encryptionKey = flag.String("key", "", "encryption key")
+	csv           = flag.String("csv", "", "csv file to read from")
 )
-
-func loadEnvvars() {
-	endpoint = strip(os.Getenv("S3_ENDPOINT"))
-	accessKey = strip(os.Getenv("S3_ACCESS"))
-	secretKey = strip(os.Getenv("S3_SECRET"))
-	bucket = strip(os.Getenv("S3_BUCKET"))
-}
-
-func strip(s string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(s, "\r", ""), "\n", "")
-}
 
 func main() {
 	flag.Parse()
-	loadEnvvars()
+	cfg := config.Parse()
 
-	if *ticketId == 0 && !*all || *ticketId > 1 && *all {
-		panic("ticket or all must be set and are mutually exclusive")
+	// ensure only one is set
+	if *ticketIds == "" && !*all && *csv == "" {
+		panic("either -ticket, -all or -csv must be set")
 	}
 
-	conf := config.Config{
-		Endpoint:  endpoint,
-		Bucket:    bucket,
-		AccessKey: accessKey,
-		SecretKey: secretKey,
-	}
+	client, err := minio.New(cfg.Endpoint, &minio.Options{
+		Creds: credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+	})
 
-	client, err := minio.New(endpoint, accessKey, secretKey, false)
 	if err != nil {
 		panic(err)
 	}
 
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-
-	server := http.NewServer(logger, conf, client)
+	s3Client := s3client.NewS3Client(client, cfg.Bucket)
 
 	var count int
-	if !*all {
-		count = clean(server, *ticketId)
-	} else {
-		done := make(chan struct{})
-		defer close(done)
+	if *csv != "" {
+		tickets := parseCsv(*csv)
+		for guildId, ids := range tickets {
+			for _, ticketId := range ids {
+				msgCount, err := clean(s3Client, guildId, ticketId)
+				if err != nil {
+					if errors.Is(err, s3client.ErrTicketNotFound) {
+						fmt.Printf("ticket %d/%d not found\n", guildId, ticketId)
+						continue
+					} else {
+						panic(err)
+					}
+				}
 
-		prefix := fmt.Sprintf("%d/", *guildId)
-		for obj := range client.ListObjectsV2WithMetadata(bucket, prefix, true, done) {
-			suffix := strings.TrimPrefix(obj.Key, prefix)
-			suffix = strings.TrimPrefix(suffix, "free-")
-			ticketId, err := strconv.Atoi(suffix)
+				count += msgCount
+
+				fmt.Printf("cleaned %d/%d (%d msgs)\n", guildId, ticketId, msgCount)
+			}
+		}
+	} else if *all {
+		keys, err := s3Client.GetAllKeysForGuild(context.Background(), *guildId)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, key := range keys {
+			ticketId, err := strconv.Atoi(key[strings.LastIndex(key, "/")+1:])
 			if err != nil {
-				fmt.Printf("error occurred while parsing id of %s: %v\n", obj.Key, err)
+				fmt.Printf("error occurred while parsing id of %s: %v\n", key, err)
 				continue
 			}
 
-			count += clean(server, ticketId)
+			msgCount, err := clean(s3Client, *guildId, ticketId)
+			if err != nil {
+				panic(err)
+			}
+
+			count += msgCount
+
 			fmt.Printf("cleaned %d\n", ticketId)
+		}
+	} else {
+		split := strings.Split(*ticketIds, ",")
+		for _, raw := range split {
+			ticketId, err := strconv.Atoi(raw)
+			if err != nil {
+				panic(err)
+			}
+
+			msgCount, err := clean(s3Client, *guildId, ticketId)
+			if err != nil {
+				panic(err)
+			}
+
+			count += msgCount
+
+			fmt.Printf("cleaned ticket %d\n", ticketId)
 		}
 	}
 
 	fmt.Printf("Cleaned %d messages\n", count)
 }
 
-func clean(server *http.Server, ticketId int) (count int) {
-	data, err := server.GetTicket(bucket, *guildId, ticketId)
+func clean(client *s3client.S3Client, guildId uint64, ticketId int) (int, error) {
+	data, err := client.GetTicket(context.Background(), guildId, ticketId)
 	if err != nil {
-		panic(err)
+		return 0, err
 	}
 
 	data, err = encryption.Decompress(data)
@@ -107,7 +128,7 @@ func clean(server *http.Server, ticketId int) (count int) {
 		panic(err)
 	}
 
-	var transcript v22.Transcript
+	var transcript v2.Transcript
 
 	version := model.GetVersion(data)
 	switch version {
@@ -126,7 +147,7 @@ func clean(server *http.Server, ticketId int) (count int) {
 		panic(fmt.Sprintf("Unknown version %d", version))
 	}
 
-	transcript.Entities.Users[*userId] = v22.User{
+	transcript.Entities.Users[*userId] = v2.User{
 		Id:            0,
 		Username:      "Removed for privacy",
 		Discriminator: 0,
@@ -134,6 +155,7 @@ func clean(server *http.Server, ticketId int) (count int) {
 		Bot:           false,
 	}
 
+	var count int
 	for i, message := range transcript.Messages {
 		if message.AuthorId == *userId {
 			count++
@@ -159,10 +181,64 @@ func clean(server *http.Server, ticketId int) (count int) {
 
 	data = encryption.Compress(data)
 
-	err = server.UploadTicket(bucket, *guildId, ticketId, data)
+	err = client.StoreTicket(context.Background(), guildId, ticketId, data)
 	if err != nil {
 		panic(err)
 	}
 
-	return
+	return count, nil
+}
+
+func parseCsv(file string) map[uint64][]int {
+	bytes, err := os.ReadFile(file)
+	if err != nil {
+		panic(err)
+	}
+
+	lines := strings.Split(string(bytes), "\n")
+
+	header := strings.Split(lines[0], ",")
+
+	guildIdIdx := -1
+	ticketIdIdx := -1
+
+	for i, h := range header {
+		if h == "guild_id" {
+			guildIdIdx = i
+		} else if h == "ticket_id" {
+			ticketIdIdx = i
+		}
+	}
+
+	if guildIdIdx == -1 || ticketIdIdx == -1 {
+		panic("Invalid CSV format")
+	}
+
+	mapping := make(map[uint64][]int)
+
+	for _, line := range lines[1:] {
+		if line == "" {
+			continue
+		}
+
+		values := strings.Split(line, ",")
+
+		guildId, err := strconv.ParseUint(values[guildIdIdx], 10, 64)
+		if err != nil {
+			panic(err)
+		}
+
+		ticketId, err := strconv.Atoi(values[ticketIdIdx])
+		if err != nil {
+			panic(err)
+		}
+
+		if _, ok := mapping[guildId]; !ok {
+			mapping[guildId] = make([]int, 0)
+		}
+
+		mapping[guildId] = append(mapping[guildId], ticketId)
+	}
+
+	return mapping
 }

@@ -2,21 +2,26 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/logarchiver/pkg/config"
-	"github.com/TicketsBot/logarchiver/pkg/http"
 	"github.com/TicketsBot/logarchiver/pkg/model"
 	"github.com/TicketsBot/logarchiver/pkg/model/v1"
 	v22 "github.com/TicketsBot/logarchiver/pkg/model/v2"
-	"github.com/minio/minio-go/v6"
+	"github.com/TicketsBot/logarchiver/pkg/s3client"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/rxdn/gdl/objects/channel/message"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"strconv"
 	"strings"
 )
+
+const workers = 15
 
 var (
 	guildId       = flag.Uint64("guildid", 0, "guild id to export")
@@ -24,6 +29,7 @@ var (
 	ticketId      = flag.Int("ticketid", 0, "set to export a single ticket")
 	convert       = flag.Bool("convert", false, "convert to v2 if necessary")
 	userWhitelist = flag.Uint64("userwhitelist", 0, "only export tickets from this user")
+	after         = flag.Int("after", 0, "export ticket IDs above this value (inclusive)")
 )
 
 func main() {
@@ -31,38 +37,62 @@ func main() {
 	conf := config.Parse()
 
 	// create minio client
-	client, err := minio.New(conf.Endpoint, conf.AccessKey, conf.SecretKey, false)
+	m, err := minio.New(conf.Endpoint, &minio.Options{
+		Creds: credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
+	})
 	if err != nil {
 		panic(err)
 	}
 
-	s := http.NewServer(conf, client)
+	client := s3client.NewS3Client(m, conf.Bucket)
 
 	// likely to be file exists
 	_ = os.Mkdir(fmt.Sprintf("export/%d", *guildId), 0)
 
 	if ticketId != nil && *ticketId > 0 {
-		export(*ticketId, s)
+		export(*ticketId, client)
 	} else {
-		doneCh := make(chan struct{})
-		defer close(doneCh)
+		keys, err := client.GetAllKeysForGuild(context.Background(), *guildId)
+		if err != nil {
+			panic(err)
+		}
 
-		objCh := client.ListObjectsV2(conf.Bucket, fmt.Sprintf("%d/", *guildId), true, doneCh)
+		keyCh := make(chan string)
+		go func() {
+			for _, key := range keys {
+				keyCh <- key
+			}
 
-		for obj := range objCh {
-			id := obj.Key
-			id = strings.Replace(id, fmt.Sprintf("%d/", *guildId), "", -1)
-			id = strings.Replace(id, "free-", "", -1)
-			parsed, err := strconv.Atoi(id)
-			must(err)
+			close(keyCh)
+		}()
 
-			export(parsed, s)
+		group, _ := errgroup.WithContext(context.Background())
+		for i := 0; i < workers; i++ {
+			group.Go(func() error {
+				for key := range keyCh {
+					id := key[strings.LastIndex(key, "/")+1:]
+					parsed, err := strconv.Atoi(id)
+					must(err)
+
+					if after != nil && *after > 0 && parsed < *after {
+						continue
+					}
+
+					export(parsed, client)
+				}
+
+				return nil
+			})
+		}
+
+		if err := group.Wait(); err != nil {
+			panic(err)
 		}
 	}
 }
 
-func export(id int, s *http.Server) {
-	data, err := s.GetTicket(s.Config.Bucket, *guildId, id)
+func export(id int, client *s3client.S3Client) {
+	data, err := client.GetTicket(context.Background(), *guildId, id)
 	must(err)
 
 	data, err = encryption.Decompress(data)

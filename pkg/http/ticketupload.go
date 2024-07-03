@@ -30,7 +30,7 @@ func (s *Server) ticketUploadHandler(ctx *gin.Context) {
 		return
 	}
 
-	if err := s.UploadTicket(s.Config.Bucket, guild, id, body); err != nil {
+	if err := s.s3.StoreTicket(ctx, guild, id, body); err != nil {
 		ctx.JSON(500, gin.H{
 			"message": err.Error(),
 		})

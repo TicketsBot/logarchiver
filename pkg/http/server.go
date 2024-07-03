@@ -3,9 +3,10 @@ package http
 import (
 	"github.com/TicketsBot/logarchiver/internal"
 	"github.com/TicketsBot/logarchiver/pkg/config"
+	"github.com/TicketsBot/logarchiver/pkg/s3client"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v6"
+	"github.com/minio/minio-go/v7"
 	"go.uber.org/zap"
 	"time"
 )
@@ -15,7 +16,8 @@ type Server struct {
 	Config      config.Config
 	RemoveQueue internal.RemoveQueue
 	router      *gin.Engine
-	client      *minio.Client
+	minio       *minio.Client
+	s3          *s3client.S3Client
 }
 
 func NewServer(logger *zap.Logger, config config.Config, client *minio.Client) *Server {
@@ -24,7 +26,8 @@ func NewServer(logger *zap.Logger, config config.Config, client *minio.Client) *
 		Config:      config,
 		RemoveQueue: internal.NewRemoveQueue(logger),
 		router:      gin.New(),
-		client:      client,
+		minio:       client,
+		s3:          s3client.NewS3Client(client, config.Bucket),
 	}
 }
 

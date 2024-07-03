@@ -1,6 +1,8 @@
 package http
 
 import (
+	"errors"
+	"github.com/TicketsBot/logarchiver/pkg/s3client"
 	"github.com/gin-gonic/gin"
 	"strconv"
 )
@@ -22,10 +24,10 @@ func (s *Server) ticketGetHandler(ctx *gin.Context) {
 		return
 	}
 
-	data, err := s.GetTicket(s.Config.Bucket, guild, id)
+	data, err := s.s3.GetTicket(ctx, guild, id)
 	if err != nil {
 		var statusCode int
-		if err == ErrTicketNotFound {
+		if errors.Is(err, s3client.ErrTicketNotFound) {
 			statusCode = 404
 		} else {
 			statusCode = 500

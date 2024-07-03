@@ -1,29 +1,34 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/TicketsBot/common/encryption"
 	"github.com/TicketsBot/database"
 	"github.com/TicketsBot/logarchiver/pkg/config"
-	"github.com/TicketsBot/logarchiver/pkg/http"
+	"github.com/TicketsBot/logarchiver/pkg/model"
+	v1 "github.com/TicketsBot/logarchiver/pkg/model/v1"
+	v2 "github.com/TicketsBot/logarchiver/pkg/model/v2"
+	"github.com/TicketsBot/logarchiver/pkg/s3client"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/minio/minio-go/v6"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/rxdn/gdl/cache"
+	"github.com/rxdn/gdl/objects/channel/message"
+	"go.uber.org/zap"
 	"os"
 	"strconv"
 	"time"
 )
 
 var (
-	userId         = flag.Uint64("userid", 0, "user id to export")
-	key            = flag.String("key", "", "aes key")
-	fullTranscript = flag.Bool("fulltranscript", false, "export full transcript") // TODO: Implement
-	dbUri          = flag.String("dburi", "", "database uri")
-	cacheUri       = flag.String("cacheuri", "", "cache uri")
+	userId   = flag.Uint64("userid", 0, "user id to export")
+	key      = flag.String("key", "", "aes key")
+	dbUri    = flag.String("dburi", "", "database uri")
+	cacheUri = flag.String("cacheuri", "", "cache uri")
 )
 
 func main() {
@@ -33,6 +38,8 @@ func main() {
 	// likely to be file exists
 	_ = os.Mkdir(fmt.Sprintf("export_user/%d", *userId), 0)
 
+	fmt.Println("Connecting to database...")
+
 	var db *database.Database
 	{
 		pool, err := pgxpool.Connect(context.Background(), *dbUri)
@@ -40,6 +47,8 @@ func main() {
 
 		db = database.NewDatabase(pool)
 	}
+
+	fmt.Println("Connecting to cache...")
 
 	var c cache.PgCache
 	{
@@ -51,6 +60,8 @@ func main() {
 			Members: true,
 		})
 	}
+
+	fmt.Println("Connected to cache")
 
 	// Get + write user data
 	{
@@ -115,37 +126,92 @@ func main() {
 
 func getTranscripts(conf config.Config, tickets map[uint64][]int) {
 	// create minio client
-	client, err := minio.New(conf.Endpoint, conf.AccessKey, conf.SecretKey, false)
+	m, err := minio.New(conf.Endpoint, &minio.Options{
+		Creds: credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
+	})
 	if err != nil {
 		panic(err)
 	}
 
-	s := http.NewServer(conf, client)
+	client := s3client.NewS3Client(m, conf.Bucket)
 
-	doneCh := make(chan struct{})
-	defer close(doneCh)
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
 
 	_ = os.Mkdir(fmt.Sprintf("export_user/%d/transcripts", *userId), 0)
 
 	for guildId, ticketIds := range tickets {
 		for _, ticketId := range ticketIds {
-			data, err := s.GetTicket(conf.Bucket, guildId, ticketId)
-			must(err)
+			data, err := client.GetTicket(context.Background(), guildId, ticketId)
+			if err != nil {
+				if errors.Is(err, s3client.ErrTicketNotFound) {
+					logger.Info("ticket not found", zap.Uint64("guildId", guildId), zap.Int("ticketId", ticketId))
+					continue
+				} else {
+					panic(err)
+				}
+			}
 
 			data, err = encryption.Decompress(data)
-			must(err)
+			if err != nil {
+				logger.Error("failed to decompress", zap.Error(err), zap.Uint64("guildId", guildId), zap.Int("ticketId", ticketId))
+				continue
+			}
 
 			data, err = encryption.Decrypt([]byte(*key), data)
+			if err != nil {
+				logger.Error("failed to decrypt", zap.Error(err), zap.Uint64("guildId", guildId), zap.Int("ticketId", ticketId))
+				continue
+			}
+
+			// Convert to v2 if needed
+			var transcript v2.Transcript
+
+			version := model.GetVersion(data)
+			switch version {
+			case model.V1:
+				var messages []message.Message
+				if err := json.Unmarshal(data, &messages); err != nil {
+					panic(err)
+				}
+
+				transcript = v1.ConvertToV2(messages)
+			case model.V2:
+				if err := json.Unmarshal(data, &transcript); err != nil {
+					panic(err)
+				}
+			default:
+				panic(fmt.Sprintf("Unknown version %d", version))
+			}
+
+			transcript.Entities.Channels = nil
+			transcript.Entities.Roles = nil
+
+			user, ok := transcript.Entities.Users[*userId]
+			if !ok {
+				transcript.Entities.Users = nil
+			} else {
+				transcript.Entities.Users = map[uint64]v2.User{
+					user.Id: user,
+				}
+			}
+
+			var messages []v2.Message
+			for _, message := range transcript.Messages {
+				if message.AuthorId == *userId {
+					messages = append(messages, message)
+				}
+			}
+
+			transcript.Messages = messages
+
+			encoded, err := json.MarshalIndent(transcript, "", "  ")
 			must(err)
 
-			var encoded bytes.Buffer
-			must(json.Indent(&encoded, data, "", "  "))
-
-			f, err := os.Create(fmt.Sprintf("export_user/%d/transcripts/%d-%d.json", *userId, guildId, ticketId))
-			must(err)
-
-			_, err = encoded.WriteTo(f)
-			must(err)
+			fileName := fmt.Sprintf("export_user/%d/transcripts/%d-%d.json", *userId, guildId, ticketId)
+			must(os.WriteFile(fileName, encoded, 0644))
 
 			fmt.Printf("exported %d/%d\n", guildId, ticketId)
 		}

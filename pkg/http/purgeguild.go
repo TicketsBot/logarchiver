@@ -1,10 +1,12 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/TicketsBot/logarchiver/internal"
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 	"go.uber.org/zap"
 	"net/http"
 	"strconv"
@@ -36,10 +38,12 @@ func (s *Server) purgeGuildHandler(ctx *gin.Context) {
 		return
 	}
 
-	removeCh := make(chan string)
+	removeCh := make(chan minio.ObjectInfo)
 	go func() {
+		opts := minio.RemoveObjectsOptions{}
+
 		var errCount int
-		for err := range s.client.RemoveObjects(s.Config.Bucket, removeCh) {
+		for err := range s.minio.RemoveObjects(context.Background(), s.Config.Bucket, removeCh, opts) {
 			s.RemoveQueue.AddError(guildId, err.ObjectName, err.Err)
 
 			s.Logger.Error(
@@ -66,10 +70,10 @@ func (s *Server) purgeGuildHandler(ctx *gin.Context) {
 	}()
 
 	go func() {
-		doneCh := make(chan struct{})
-		defer close(doneCh)
-
-		objCh := s.client.ListObjectsV2(s.Config.Bucket, fmt.Sprintf("%d/", guildId), true, doneCh)
+		objCh := s.minio.ListObjects(context.Background(), s.Config.Bucket, minio.ListObjectsOptions{
+			Prefix:    fmt.Sprintf("%d/", guildId),
+			Recursive: true,
+		})
 
 		for obj := range objCh {
 			s.Logger.Info(
@@ -79,7 +83,7 @@ func (s *Server) purgeGuildHandler(ctx *gin.Context) {
 			)
 
 			s.RemoveQueue.AddRemovedObject(guildId, obj.Key)
-			removeCh <- obj.Key
+			removeCh <- obj
 		}
 
 		close(removeCh)
