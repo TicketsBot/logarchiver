@@ -25,17 +25,22 @@ func (c *S3Client) GetTicket(ctx context.Context, guildId uint64, ticketId int) 
 
 	object, err := c.client.GetObject(ctx, c.bucketName, key, minio.GetObjectOptions{})
 	if err != nil {
-		var resp minio.ErrorResponse
-		if errors.As(err, &resp) {
-			if resp.Code == "NoSuchKey" {
-				return nil, ErrTicketNotFound
-			}
+		if isNotFoundErr(err) {
+			return nil, ErrTicketNotFound
+		} else {
+			return nil, err
 		}
-
-		return nil, err
 	}
 
 	defer object.Close()
+
+	if _, err := object.Stat(); err != nil {
+		if isNotFoundErr(err) {
+			return nil, ErrTicketNotFound
+		} else {
+			return nil, err
+		}
+	}
 
 	var buff bytes.Buffer
 	if _, err := buff.ReadFrom(object); err != nil {
@@ -78,4 +83,9 @@ func (c *S3Client) GetAllKeysForGuild(ctx context.Context, guildId uint64) ([]st
 	}
 
 	return keys, nil
+}
+
+func isNotFoundErr(err error) bool {
+	var resp minio.ErrorResponse
+	return errors.As(err, &resp) && resp.Code == "NoSuchKey"
 }
