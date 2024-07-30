@@ -33,7 +33,6 @@ func main() {
 	}
 
 	ch := client.ListObjects(context.Background(), conf.Bucket, minio.ListObjectsOptions{
-		Prefix:    "8",
 		Recursive: true,
 	})
 
