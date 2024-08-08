@@ -5,12 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/TicketsBot/logarchiver/pkg/repository/model"
 	"github.com/minio/minio-go/v7"
 )
 
 type S3Client struct {
 	client     *minio.Client
 	bucketName string
+	bucket     model.Bucket
 }
 
 func NewS3Client(client *minio.Client, bucketName string) *S3Client {

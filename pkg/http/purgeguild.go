@@ -70,6 +70,7 @@ func (s *Server) purgeGuildHandler(ctx *gin.Context) {
 	}()
 
 	go func() {
+		s.s3Clients.Get()
 		objCh := s.minio.ListObjects(context.Background(), s.Config.Bucket, minio.ListObjectsOptions{
 			Prefix:    fmt.Sprintf("%d/", guildId),
 			Recursive: true,
