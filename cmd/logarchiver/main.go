@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/TicketsBot/common/observability"
 	"github.com/TicketsBot/logarchiver/pkg/config"
 	"github.com/TicketsBot/logarchiver/pkg/http"
+	"github.com/TicketsBot/logarchiver/pkg/repository"
+	"github.com/TicketsBot/logarchiver/pkg/s3client"
 	"github.com/getsentry/sentry-go"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.uber.org/zap"
+	"time"
 )
 
 func main() {
@@ -41,21 +43,26 @@ func main() {
 		panic(err)
 	}
 
-	logger.Debug("Starting minio client...")
+	logger.Info("Connecting to database...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// create minio client
-	client, err := minio.New(conf.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(conf.AccessKey, conf.SecretKey, ""),
-		Secure: true,
-	})
+	store, err := repository.ConnectPostgres(ctx, conf)
 	if err != nil {
-		logger.Fatal("Failed to create minio client", zap.Error(err), zap.String("endpoint", conf.Endpoint))
-		panic(err) // logger.Fatal should exit already
+		logger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+
+	logger.Info("Connected.")
+
+	logger.Debug("Starting S3 client manager...")
+	clientManager := s3client.NewShardedClientManager(conf, store)
+	if err := clientManager.Load(ctx); err != nil {
+		logger.Fatal("Failed to load S3 clients", zap.Error(err))
 	}
 
 	logger.Debug("Starting HTTP server...")
 
-	server := http.NewServer(logger, conf, client)
+	server := http.NewServer(logger, conf, store, clientManager)
 	go server.RemoveQueue.StartReaper()
 	server.RegisterRoutes()
 	server.Start()

@@ -206,7 +206,7 @@ func parseCsv(file string) map[uint64][]int {
 	for i, h := range header {
 		if h == "guild_id" {
 			guildIdIdx = i
-		} else if h == "ticket_id" {
+		} else if h == "ticket_id" || h == "id" {
 			ticketIdIdx = i
 		}
 	}
