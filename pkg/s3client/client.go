@@ -87,6 +87,18 @@ func (c *S3Client) GetAllKeysForGuild(ctx context.Context, guildId uint64) ([]st
 	return keys, nil
 }
 
+// Minio returns the underlying minio client. This will be removed in the future, once the entries from the default
+// bucket are migrated into the database.
+func (c *S3Client) Minio() *minio.Client {
+	return c.client
+}
+
+// BucketName returns the underlying minio client. This will be removed in the future, once the entries from the default
+// bucket are migrated into the database.
+func (c *S3Client) BucketName() string {
+	return c.bucketName
+}
+
 func isNotFoundErr(err error) bool {
 	var resp minio.ErrorResponse
 	return errors.As(err, &resp) && resp.Code == "NoSuchKey"

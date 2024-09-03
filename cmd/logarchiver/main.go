@@ -56,6 +56,9 @@ func main() {
 
 	logger.Debug("Starting S3 client manager...")
 	clientManager := s3client.NewShardedClientManager(conf, store)
+	if err := clientManager.Load(ctx); err != nil {
+		logger.Fatal("Failed to load S3 clients", zap.Error(err))
+	}
 
 	logger.Debug("Starting HTTP server...")
 

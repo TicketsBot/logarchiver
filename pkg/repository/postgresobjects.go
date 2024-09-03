@@ -18,6 +18,9 @@ var (
 	//go:embed sql/objects/get.sql
 	queryGetObject string
 
+	//go:embed sql/objects/list_by_guild.sql
+	queryListByGuild string
+
 	//go:embed sql/objects/create.sql
 	queryCreateObject string
 
@@ -42,6 +45,27 @@ func (p *PostgresObjectRepository) GetObject(ctx context.Context, guildId uint64
 	}
 
 	return object, true, nil
+}
+
+func (p *PostgresObjectRepository) ListByGuild(ctx context.Context, guildId uint64) ([]model.Object, error) {
+	rows, err := p.tx.Query(ctx, queryListByGuild, guildId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var objects []model.Object
+	for rows.Next() {
+		var object model.Object
+		if err := rows.Scan(&object.GuildId, &object.TicketId, &object.BucketId); err != nil {
+			return nil, err
+		}
+
+		objects = append(objects, object)
+	}
+
+	return objects, nil
 }
 
 func (p *PostgresObjectRepository) CreateObject(ctx context.Context, object model.Object) error {

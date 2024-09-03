@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -51,7 +53,13 @@ func (s *ShardedClientManager) Load(ctx context.Context) error {
 	s.clients = make(map[uuid.UUID]*S3Client)
 
 	for _, bucket := range buckets {
-		m, err := minio.New(bucket.EndpointUrl, &minio.Options{
+		// Extract host from endpoint URL
+		host, err := extractHost(bucket.EndpointUrl)
+		if err != nil {
+			return err
+		}
+
+		m, err := minio.New(host, &minio.Options{
 			Creds:  credentials.NewStaticV4(s.config.AccessKey, s.config.SecretKey, ""),
 			Secure: true,
 		})
@@ -60,7 +68,7 @@ func (s *ShardedClientManager) Load(ctx context.Context) error {
 			return err
 		}
 
-		s.clients[bucket.Id] = NewS3Client(m, bucket.EndpointUrl)
+		s.clients[bucket.Id] = NewS3Client(m, bucket.Name)
 	}
 
 	return nil
@@ -88,4 +96,17 @@ func (s *ShardedClientManager) GetAll() []*S3Client {
 	}
 
 	return clients
+}
+
+func extractHost(endpoint string) (string, error) {
+	if strings.HasPrefix(endpoint, "https://") || strings.HasPrefix(endpoint, "http://") {
+		parsed, err := url.Parse(endpoint)
+		if err != nil {
+			return "", err
+		}
+
+		return parsed.Host, nil
+	} else {
+		return endpoint, nil
+	}
 }

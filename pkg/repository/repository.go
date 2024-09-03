@@ -26,5 +26,6 @@ type BucketRepository interface {
 type ObjectRepository interface {
 	GetObject(ctx context.Context, guildId uint64, ticketId int) (model.Object, bool, error)
 	CreateObject(ctx context.Context, object model.Object) error
+	ListByGuild(ctx context.Context, guildId uint64) ([]model.Object, error)
 	DeleteObject(ctx context.Context, guildId uint64, ticketId int) error
 }
