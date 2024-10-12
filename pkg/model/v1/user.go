@@ -2,15 +2,13 @@ package v1
 
 import (
 	"fmt"
-	"github.com/rxdn/gdl/objects/user"
 )
 
 type User struct {
-	Id            uint64             `json:"id,string"`
-	Username      string             `json:"username"`
-	Discriminator user.Discriminator `json:"discriminator"`
-	Avatar        string             `json:"avatar"`
-	Bot           bool               `json:"bot"`
+	Id       uint64 `json:"id,string"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+	Bot      bool   `json:"bot"`
 }
 
 func (u *User) AvatarUrl(size int) string {

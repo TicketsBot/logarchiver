@@ -14,11 +14,10 @@ type Entities struct {
 }
 
 type User struct {
-	Id            uint64             `json:"id,string"`
-	Username      string             `json:"username"`
-	Discriminator user.Discriminator `json:"discriminator"`
-	Avatar        string             `json:"avatar"`
-	Bot           bool               `json:"bot"`
+	Id       uint64 `json:"id,string"`
+	Username string `json:"username"`
+	Avatar   string `json:"avatar"`
+	Bot      bool   `json:"bot"`
 }
 
 func (u *User) AvatarUrl(size int) string {
@@ -39,11 +38,10 @@ type Role struct {
 
 func UserFromGdl(entity user.User) User {
 	return User{
-		Id:            entity.Id,
-		Username:      entity.Username,
-		Discriminator: entity.Discriminator,
-		Avatar:        entity.Avatar.String(),
-		Bot:           entity.Bot,
+		Id:       entity.Id,
+		Username: entity.Username,
+		Avatar:   entity.Avatar.String(),
+		Bot:      entity.Bot,
 	}
 }
 

@@ -16,12 +16,11 @@ func ReduceMessages(messages []message.Message) []Message {
 
 func ReduceMessage(message message.Message) Message {
 	return Message{
-		Author:      User{
-			Id:            message.Author.Id,
-			Username:      message.Author.Username,
-			Discriminator: message.Author.Discriminator,
-			Avatar:        message.Author.Avatar.String(),
-			Bot:           message.Author.Bot,
+		Author: User{
+			Id:       message.Author.Id,
+			Username: message.Author.Username,
+			Avatar:   message.Author.Avatar.String(),
+			Bot:      message.Author.Bot,
 		},
 		Content:     message.Content,
 		Timestamp:   message.Timestamp,

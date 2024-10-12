@@ -149,11 +149,10 @@ func clean(client *s3client.S3Client, guildId uint64, ticketId int) (int, error)
 	}
 
 	transcript.Entities.Users[*userId] = v2.User{
-		Id:            0,
-		Username:      "Removed for privacy",
-		Discriminator: 0,
-		Avatar:        "",
-		Bot:           false,
+		Id:       0,
+		Username: "Removed for privacy",
+		Avatar:   "",
+		Bot:      false,
 	}
 
 	var count int

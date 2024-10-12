@@ -12,7 +12,7 @@ require (
 	github.com/gin-contrib/zap v0.1.0
 	github.com/gin-gonic/gin v1.8.1
 	github.com/jackc/pgx/v4 v4.6.0
-	github.com/rxdn/gdl v0.0.0-20230622203838-cad65ada73f0
+	github.com/rxdn/gdl v0.0.0-20241012214045-890597169639
 	go.uber.org/zap v1.23.0
 	golang.org/x/sync v0.7.0
 )
