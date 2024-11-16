@@ -139,7 +139,7 @@ func (s *Server) purgeGuildHandler(ctx *gin.Context) {
 			}
 		}
 
-		close(removeCh)
+		latch.Done()
 	}()
 
 	// Fetch from the database
@@ -161,6 +161,8 @@ func (s *Server) purgeGuildHandler(ctx *gin.Context) {
 				Key:    obj.S3Key(),
 			}
 		}
+
+		latch.Done()
 	}()
 
 	// Close the remove channel when both goroutines have completed
