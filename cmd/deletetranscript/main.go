@@ -20,7 +20,7 @@ var (
 
 func main() {
 	flag.Parse()
-	cfg := config.Parse()
+	cfg := config.Parse[config.CliConfig]()
 
 	if guildId == nil || *guildId == 0 {
 		panic("guild id must be set")

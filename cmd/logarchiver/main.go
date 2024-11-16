@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	conf := config.Parse()
+	conf := config.Parse[config.Config]()
 
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn:   conf.SentryDsn,

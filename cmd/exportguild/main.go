@@ -34,7 +34,7 @@ var (
 
 func main() {
 	flag.Parse()
-	conf := config.Parse()
+	conf := config.Parse[config.CliConfig]()
 
 	// create minio client
 	m, err := minio.New(conf.Endpoint, &minio.Options{

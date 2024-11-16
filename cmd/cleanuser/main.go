@@ -31,7 +31,7 @@ var (
 
 func main() {
 	flag.Parse()
-	cfg := config.Parse()
+	cfg := config.Parse[config.CliConfig]()
 
 	// ensure only one is set
 	if *ticketIds == "" && !*all && *csv == "" {

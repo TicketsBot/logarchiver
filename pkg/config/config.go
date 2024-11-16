@@ -20,7 +20,7 @@ type Config struct {
 	DatabaseUri string `env:"DATABASE_URI"`
 }
 
-func Parse() (conf Config) {
+func Parse[T any]() (conf T) {
 	parsers := env.CustomParsers{
 		reflect.TypeOf(uuid.UUID{}): func(value string) (interface{}, error) {
 			return uuid.Parse(value)
